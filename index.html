@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔥 Polymarket Breaking Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { background: #0a0a0a; color: #e5e5e5; font-family: 'Inter', sans-serif; }
+    .card { background: #1a1a1a; border: 1px solid #333; border-radius: 0.75rem; padding: 1rem; transition: all .2s; }
+    .card:hover { transform: translateY(-2px); border-color: #7c3aed; }
+    .badge { font-size: .7rem; padding: .2rem .5rem; border-radius: 999px; font-weight: 700; text-transform: uppercase; }
+    .bg-green-600 { background: rgba(34, 197, 94, 0.6); color: #22c55e; }
+    .bg-red-600 { background: rgba(239, 68, 68, 0.6); color: #ef4444; }
+    .bg-blue-600 { background: rgba(59, 130, 246, 0.6); color: #3b82f6; }
+    .bg-orange-600 { background: rgba(249, 115, 22, 0.6); color: #f97316; }
+    .bg-gray-600 { background: rgba(156, 163, 175, 0.3); color: #9ca3af; }
+    .bg-purple-600 { background: rgba(168, 85, 247, 0.6); color: #d8b4fe; }
+    .text-green { color: #22c55e; }
+    .text-red { color: #ef4444; }
+    .text-yellow { color: #fbbf24; }
+    .sparkline { height: 60px; width: 100%; }
+    .pulse { animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+    .stat-card { background: #1a1a1a; border: 1px solid #333; border-radius: 0.5rem; padding: 1rem; text-align: center; }
+    .stat-value { font-size: 1.75rem; font-weight: 800; color: #a78bfa; }
+  </style>
+</head>
+<body class="min-h-screen p-4 md:p-6">
+  <div class="max-w-7xl mx-auto">
+    <header class="mb-8 text-center">
+      <h1 class="text-3xl font-bold text-white mb-2">🔥 Polymarket Breaking Dashboard</h1>
+      <p class="text-gray-400">Detecção de eventos em rompimento com análise de gráfico e sinais</p>
+    </header>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div class="stat-card">
+        <div class="text-gray-400 text-xs uppercase">Mercados</div>
+        <div class="stat-value" id="total">%TOTAL_MARKETS%</div>
+      </div>
+      <div class="stat-card">
+        <div class="text-gray-400 text-xs uppercase">Breaking 🔥</div>
+        <div class="stat-value text-yellow" id="breaking">%BREAKING_COUNT%</div>
+      </div>
+      <div class="stat-card">
+        <div class="text-gray-400 text-xs uppercase">Atualizado</div>
+        <div class="stat-value text-sm" id="updated">%GENERATED_AT%</div>
+      </div>
+      <div class="stat-card">
+        <div class="text-gray-400 text-xs uppercase">Filtro</div>
+        <div class="stat-value text-sm text-green" id="filter-status">Todos</div>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-6">
+      <div class="flex flex-wrap gap-4 items-center">
+        <div class="flex items-center gap-2">
+          <label class="text-gray-400 text-sm">Mostrar:</label>
+          <select id="filter-type" class="bg-dark border border-gray-700 rounded px-3 py-2 text-white">
+            <option value="all">Todos</option>
+            <option value="breaking">Apenas Breaking 🔥</option>
+            <option value="buy">Sinais de Compra</option>
+            <option value="sell">Sinais de Venda</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-gray-400 text-sm">Volume mínimo ($):</label>
+          <input type="number" id="min-volume" value="0" step="1000" class="bg-dark border border-gray-700 rounded px-3 py-2 text-white w-32">
+        </div>
+        <button onclick="applyFilters()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded font-semibold">Aplicar</button>
+        <a href="https://github.com/emalaman/polymarket-breaking-dashboard" target="_blank" class="ml-auto text-gray-500 hover:text-white text-sm">🔧 Código no GitHub</a>
+      </div>
+    </div>
+
+    <!-- Cards -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-8" id="cards"></div>
+
+    <!-- Tabela -->
+    <div class="card">
+      <h2 class="text-xl font-bold text-white mb-4">📋 Todos os Mercados</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead>
+            <tr class="border-b border-gray-800 text-gray-400">
+              <th class="py-2 px-3">Mercado</th>
+              <th class="py-2 px-4 text-right">YES</th>
+              <th class="py-2 px-4 text-right">NO</th>
+              <th class="py-2 px-4 text-right">Spread</th>
+              <th class="py-2 px-4 text-right">Vol 24h</th>
+              <th class="py-2 px-4 text-right">Vol 1m</th>
+              <th class="py-2 px-4 text-center">Sinal</th>
+              <th class="py-2 px-4 text-center">Status</th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <footer class="mt-8 text-center text-gray-600 text-xs border-t border-gray-800 pt-4">
+      Dados: CLOB API • Atualização automática via GitHub Actions • %GENERATED_AT%
+    </footer>
+  </div>
+
+  <script>
+    const markets = %MARKETS_JSON%;
+    const charts = {}; // sparkline charts storage
+    
+    function fmtNumber(num) {
+      if (num >= 1e6) return (num/1e6).toFixed(1) + 'M';
+      if (num >= 1e3) return (num/1e3).toFixed(1) + 'k';
+      return num.toFixed(0);
+    }
+    
+    function applyFilters() {
+      const filterType = document.getElementById('filter-type').value;
+      const minVolume = parseFloat(document.getElementById('min-volume').value) || 0;
+      
+      let filtered = markets;
+      
+      if (filterType === 'breaking') {
+        filtered = markets.filter(m => m.isBreaking);
+        document.getElementById('filter-status').textContent = 'Apenas Breaking';
+      } else if (filterType === 'buy') {
+        filtered = markets.filter(m => m.signal.label.includes('COMPRA'));
+        document.getElementById('filter-status').textContent = 'Sinais de Compra';
+      } else if (filterType === 'sell') {
+        filtered = markets.filter(m => m.signal.label.includes('VENDA') || m.signal.label.includes('EVITAR'));
+        document.getElementById('filter-status').textContent = 'Sinais de Venda';
+      } else {
+        document.getElementById('filter-status').textContent = 'Todos';
+      }
+      
+      filtered = filtered.filter(m => m.volumeNow >= minVolume);
+      render(filtered);
+    }
+    
+    function render(filteredMarkets) {
+      const cardsContainer = document.getElementById('cards');
+      const tableBody = document.getElementById('table-body');
+      
+      // Cards
+      cardsContainer.innerHTML = filteredMarkets.slice(0, 12).map(m => createCard(m)).join('');
+      
+      // Table
+      tableBody.innerHTML = filteredMarkets.map(m => createTableRow(m)).join('');
+      
+      // Destroy old sparkline charts
+      Object.values(charts).forEach(chart => chart.destroy());
+      charts.__cleared = true;
+      
+      // Create new sparklines after DOM update
+      setTimeout(() => {
+        filteredMarkets.slice(0, 12).forEach(m => {
+          if (m.candles && m.candles.length > 0) {
+            createSparkline(m.id, m.candles);
+          }
+        });
+      }, 100);
+    }
+    
+    function createCard(m) {
+      const sparkId = `spark-${m.id}`;
+      const badgeClass = m.isBreaking ? 'bg-yellow-600 text-yellow-400' : m.signal.class;
+      const badgeLabel = m.isBreaking ? '🔥 BREAKING' : m.signal.label;
+      
+      return `
+        <div class="card ${m.isBreaking ? 'border-yellow-600' : ''}">
+          <div class="flex justify-between items-start mb-2">
+            <h3 class="text-sm font-bold text-white flex-1 mr-2 line-clamp-2">${m.question}</h3>
+            <span class="badge ${badgeClass}">${badgeLabel}</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2 mb-2 text-xs">
+            <div>
+              <span class="text-gray-400">YES:</span>
+              <span class="${parseFloat(m.yes) < 0.5 ? 'text-green' : 'text-red'} font-bold ml-1">${m.yes}</span>
+            </div>
+            <div>
+              <span class="text-gray-400">NO:</span>
+              <span class="${parseFloat(m.no) < 0.5 ? 'text-green' : 'text-red'} font-bold ml-1">${m.no}</span>
+            </div>
+            <div>
+              <span class="text-gray-400">Spread:</span>
+              <span class="text-white ml-1">${m.spread}</span>
+            </div>
+            <div>
+              <span class="text-gray-400">Vol 24h:</span>
+              <span class="text-white ml-1">$${fmtNumber(m.volume24h)}</span>
+            </div>
+          </div>
+          <div class="mb-3">
+            <div class="text-xs text-gray-400 mb-1">Preço (última hora)</div>
+            <canvas id="${sparkId}" class="sparkline ${m.isBreaking ? 'pulse' : ''}"></canvas>
+          </div>
+          <div class="text-xs text-gray-400 mb-2">
+            <span class="text-yellow">▲ ${m.volumeRatio}</span> vol spike |
+            <span class="text-blue-400">${m.priceChange}</span> 1min
+          </div>
+          <div class="text-xs p-2 bg-gray-900 rounded mb-2">
+            <strong>${m.signal.reason}</strong>
+          </div>
+          <a href="${m.url}" target="_blank" class="block w-full text-center py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded transition">Abrir</a>
+        </div>
+      `;
+    }
+    
+    function createTableRow(m) {
+      const badgeClass = m.isBreaking ? 'bg-yellow-600' : m.signal.class;
+      const badgeLabel = m.isBreaking ? '🔥 BREAKING' : m.signal.label;
+      
+      return `
+        <tr class="border-b border-gray-800 hover:bg-gray-900">
+          <td class="py-2 px-3 text-white max-w-md line-clamp-1">${m.question}</td>
+          <td class="py-2 px-4 text-right font-mono ${parseFloat(m.yes) < 0.5 ? 'text-green' : 'text-red'}">${m.yes}</td>
+          <td class="py-2 px-4 text-right font-mono ${parseFloat(m.no) < 0.5 ? 'text-green' : 'text-red'}">${m.no}</td>
+          <td class="py-2 px-4 text-right">${m.spread}</td>
+          <td class="py-2 px-4 text-right">$${fmtNumber(m.volume24h)}</td>
+          <td class="py-2 px-4 text-right text-yellow">${fmtNumber(m.volumeNow)}</td>
+          <td class="py-2 px-4 text-center"><span class="badge ${badgeClass}">${badgeLabel}</span></td>
+          <td class="py-2 px-4 text-center">${m.isBreaking ? '🔥' : ''}</td>
+        </tr>
+      `;
+    }
+    
+    function createSparkline(marketId, candles) {
+      const ctx = document.getElementById(`spark-${marketId}`);
+      if (!ctx) return;
+      
+      const data = candles.map((c, i) => ({
+        x: i,
+        y: parseFloat(c[4]) // close price (YES)
+      }));
+      
+      const chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: data.map(d => d.x),
+          datasets: [{
+            data: data.map(d => d.y),
+            borderColor: data[data.length-1] > data[0] ? '#22c55e' : '#ef4444',
+            backgroundColor: 'rgba(0,0,0,0)',
+            borderWidth: 2,
+            pointRadius: 0,
+            fill: false,
+            tension: 0.3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { enabled: false } },
+          scales: {
+            x: { display: false },
+            y: { 
+              display: false,
+              min: 0.45,
+              max: 0.55
+            }
+          },
+          animation: false
+        }
+      });
+      
+      charts[marketId] = chart;
+    }
+    
+    // Inicializar
+    applyFilters();
+  </script>
+</body>
+</html>

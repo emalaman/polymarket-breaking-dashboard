@@ -1,0 +1,18 @@
+{
+  "name": "polymarket-breaking-dashboard",
+  "version": "1.0.0",
+  "description": "Dashboard for Polymarket breaking events with trading signals",
+  "main": "fetch.js",
+  "scripts": {
+    "fetch": "node fetch.js",
+    "generate": "node generate.js",
+    "build": "npm run fetch && npm run generate",
+    "deploy": "npm run build && git add -A && git commit -m 'Update data' && git push"
+  },
+  "keywords": ["polymarket", "dashboard", "trading", "crypto"],
+  "author": "EmilIA",
+  "license": "MIT",
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  }
+}
