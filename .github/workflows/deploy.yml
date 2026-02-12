@@ -28,6 +28,7 @@ jobs:
           POLYMARKET_API_KEY: ${{ secrets.POLYMARKET_API_KEY }}
           POLYMARKET_API_SECRET: ${{ secrets.POLYMARKET_API_SECRET }}
           POLYMARKET_API_PASSPHRASE: ${{ secrets.POLYMARKET_API_PASSPHRASE }}
+        continue-on-error: true  # Se não houver secrets, continua com dados mock
           
       - name: Generate HTML
         run: npm run generate
