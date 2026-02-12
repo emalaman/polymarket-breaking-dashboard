@@ -3,13 +3,15 @@
 const fetch = require('node-fetch');
 const crypto = require('crypto');
 
-// Configuração (será preenchida pelas env vars do GitHub Actions)
+const GAMMA_API = 'https://gamma-api.polymarket.com';
+const CLOB_BASE = 'https://clob.polymarket.com';
+
+// Configuração CLOB (para candles)
 const API_KEY = process.env.POLYMARKET_API_KEY;
 const API_SECRET = process.env.POLYMARKET_API_SECRET;
 const API_PASSPHRASE = process.env.POLYMARKET_API_PASSPHRASE;
-const BASE_URL = 'https://clob.polymarket.com';
 
-// Se não tiver credenciais, gera dados de exemplo (modo demo)
+// Se não tiver credenciais CLOB, gera dados mock (modo demo)
 if (!API_KEY || !API_SECRET || !API_PASSPHRASE) {
   console.warn('⚠️  Credenciais CLOB não encontradas. Gerando dados de exemplo (demo mode)...');
   generateMockData();
@@ -32,56 +34,54 @@ function signRequest(method, path, body = '', timestamp = Date.now()) {
   };
 }
 
-// Buscar mercados ativos
-async function fetchMarkets(limit = 500) {
-  const path = `/data?limit=${limit}&active=true&closed=false`;
-  const url = `${BASE_URL}${path}`;
+// Buscar mercado da Gamma para obter slug
+async function fetchGammaMarket(clobMarketId) {
+  try {
+    const url = `${GAMMA_API}/markets?limit=1&id=${clobMarketId}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.markets && data.markets.length > 0) {
+      return data.markets[0];
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
+
+// Buscar candles de 1min da CLOB
+async function fetchCandles(marketId, resolution = '1m', limit = 60) {
+  const path = `/data/${marketId}/candles?resolution=${resolution}&limit=${limit}`;
+  const url = `${CLOB_BASE}${path}`;
   
   const headers = signRequest('GET', path);
   const res = await fetch(url, { headers });
   
   if (!res.ok) {
-    throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+    return null;
   }
   
   const data = await res.json();
-  return data.data || data.markets || [];
-}
-
-// Buscar candles (ultima hora, 1min resolution)
-async function fetchCandles(marketId, resolution = '1m', limit = 60) {
-  const path = `/data/${marketId}/candles?resolution=${resolution}&limit=${limit}`;
-  const url = `${BASE_URL}${path}`;
-  
-  const headers = signRequest('GET', path);
-  const res = await fetch(url, { headers });
-  
-  if (!res.ok) {
-    return null; // Mercado pode não ter candles
-  }
-  
-  return await res.json();
+  return data.candles || data.data || null;
 }
 
 // Calcular métricas de "breaking"
 function analyzeBreaking(candles) {
-  if (!candles || candles.length < 11) return null; // precisamos de pelo menos 11 (10 para média + 1 atual)
+  if (!candles || candles.length < 11) return null;
   
-  // Último candle
   const last = candles[candles.length - 1];
   const prev = candles[candles.length - 2];
   
-  const lastVolume = parseFloat(last[5]) || 0; // volume
-  const lastClose = parseFloat(last[4]) || 0; // close price (YES price)
+  const lastVolume = parseFloat(last[5]) || 0;
+  const lastClose = parseFloat(last[4]) || 0;
   
-  // Média de volume dos 10 candles anteriores
-  const volSum = 0;
+  let volSum = 0;
   for (let i = candles.length - 11; i < candles.length - 1; i++) {
     volSum += parseFloat(candles[i][5]) || 0;
   }
   const avgVolume = volSum / 10;
   
-  // Mudança de preço (último min vs min anterior)
   const prevClose = parseFloat(prev[4]) || 0;
   const priceChange = prevClose > 0 ? (lastClose - prevClose) / prevClose : 0;
   
@@ -94,7 +94,7 @@ function analyzeBreaking(candles) {
   };
 }
 
-// Determinar sinal baseado no preço YES atual
+// Determinar sinal
 function getSignal(yesPrice, priceChange) {
   if (yesPrice < 0.40) {
     return {
@@ -133,17 +133,32 @@ async function main() {
   console.log('🔍 Buscando mercados ativos da CLOB API...');
   
   try {
-    const markets = await fetchMarkets(200); // limitar a 200 para não sobrecarregar
-    console.log(`📊 ${markets.length} mercados encontrados`);
+    // 1. Buscar mercados da CLOB
+    const clobMarketsRes = await fetch('https://clob.polymarket.com/data?limit=100&active=true&closed=false');
+    if (!clobMarketsRes.ok) throw new Error(`CLOB HTTP ${clobMarketsRes.status}`);
+    const clobData = await clobMarketsRes.json();
+    const clobMarkets = clobData.data || clobData.markets || [];
+    
+    console.log(`📊 ${clobMarkets.length} mercados CLOB encontrados`);
     
     const analyzed = [];
     
-    for (let i = 0; i < markets.length; i++) {
-      const market = markets[i];
+    // 2. Para cada mercado CLOB, buscar slug da Gamma e candles
+    for (let i = 0; i < Math.min(clobMarkets.length, 50); i++) { // limitar a 50 para não sobrecarregar
+      const market = clobMarkets[i];
       const marketId = market.marketId || market.id;
-      const question = market.question || '';
       
-      // Extrair preços YES/NO
+      // Buscar mercado na Gamma para obter slug e question
+      const gammaMarket = await fetchGammaMarket(marketId);
+      if (!gammaMarket) {
+        console.log(`   ⚠️  Mercado ${marketId} não encontrado na Gamma, pulando...`);
+        continue;
+      }
+      
+      const slug = gammaMarket.slug;
+      const question = gammaMarket.question || '';
+      
+      // Preços da CLOB
       let prices = market.outcomePrices;
       if (typeof prices === 'string') {
         try { prices = JSON.parse(prices); } catch (e) { continue; }
@@ -152,23 +167,24 @@ async function main() {
       
       const yes = parseFloat(prices[0]);
       const no = parseFloat(prices[1]);
-      
       if (yes === 0 || no === 0) continue;
       
-      // Buscar candles para análise de breaking
+      // Candle de 1min
       const candles = await fetchCandles(marketId, '1m', 60);
       const analysis = analyzeBreaking(candles);
-      
-      if (!analysis) continue; // poucos dados
+      if (!analysis) continue;
       
       // Critérios de breaking
       const isBreaking = 
         analysis.volumeRatio > 3 && 
         Math.abs(analysis.priceChange) > 0.01 &&
-        Math.max(yes, no) - Math.min(yes, no) > 0.02; // spread > 2%
+        Math.max(yes, no) - Math.min(yes, no) > 0.02;
       
       // Sinal
       const signal = getSignal(yes, analysis.priceChange);
+      
+      // URL correta com slug
+      const url = slug ? `https://polymarket.com/market/${slug}` : `https://polymarket.com/market/${marketId}`;
       
       analyzed.push({
         id: marketId,
@@ -183,13 +199,13 @@ async function main() {
         signal,
         isBreaking,
         lastUpdate: new Date().toISOString(),
-        url: `https://polymarket.com/market/${marketId}`
+        url
       });
     }
     
-    // Ordenar: primeiro os breaking, depois por volume
+    // Ordenar
     analyzed.sort((a, b) => {
-      if (b.isBreaking !== a.isBreaking) return b.isbreaking - a.isbreaking;
+      if (b.isBreaking !== a.isBreaking) return b.isBreaking - a.isBreaking;
       return b.volumeNow - a.volumeNow;
     });
     
@@ -206,8 +222,6 @@ async function main() {
     
   } catch (error) {
     console.error('❌ Erro:', error.message);
-    // Em caso de erro, gera dados mock para não quebrar o deploy
-    console.log('🔄 Gerando dados de exemplo (mock) devido a erro...');
     generateMockData();
   }
 }
@@ -237,7 +251,7 @@ function generateMockData() {
         },
         isBreaking: true,
         lastUpdate: new Date().toISOString(),
-        url: "https://polymarket.com/market/demo1",
+        url: "https://polymarket.com/market/will-bitcoin-hit-100k-before-june-2025",
         candles: generateMockCandles(0.485, 60)
       },
       {
@@ -257,7 +271,7 @@ function generateMockData() {
         },
         isBreaking: false,
         lastUpdate: new Date().toISOString(),
-        url: "https://polymarket.com/market/demo2",
+        url: "https://polymarket.com/market/will-fed-raise-rates-in-march-meeting",
         candles: generateMockCandles(0.520, 60)
       },
       {
@@ -277,7 +291,7 @@ function generateMockData() {
         },
         isBreaking: false,
         lastUpdate: new Date().toISOString(),
-        url: "https://polymarket.com/market/demo3",
+        url: "https://polymarket.com/market/will-ethereum-reach-5k-by-end-of-2025",
         candles: generateMockCandles(0.320, 60)
       }
     ]
