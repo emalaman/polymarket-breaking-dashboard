@@ -38,15 +38,15 @@
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
       <div class="stat-card">
         <div class="text-gray-400 text-xs uppercase">Mercados</div>
-        <div class="stat-value" id="total">%TOTAL_MARKETS%</div>
+        <div class="stat-value" id="total">5</div>
       </div>
       <div class="stat-card">
         <div class="text-gray-400 text-xs uppercase">Breaking 🔥</div>
-        <div class="stat-value text-yellow" id="breaking">%BREAKING_COUNT%</div>
+        <div class="stat-value text-yellow" id="breaking">2</div>
       </div>
       <div class="stat-card">
         <div class="text-gray-400 text-xs uppercase">Atualizado</div>
-        <div class="stat-value text-sm" id="updated">%GENERATED_AT%</div>
+        <div class="stat-value text-sm" id="updated">11/02/2026, 22:28:38</div>
       </div>
       <div class="stat-card">
         <div class="text-gray-400 text-xs uppercase">Filtro</div>
@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const markets = %MARKETS_JSON%;
+    const markets = [{"id":"example1","question":"Will Bitcoin hit $100k before June 2025?","yes":"0.485","no":"0.515","spread":"0.030","volume24h":1250000,"volumeNow":45000,"volumeRatio":"3.20x","priceChange":"+2.45%","signal":{"label":"📈 TENDÊNCIA ALTA","class":"bg-blue-600","reason":"YES subindo (+2.45%)"},"isBreaking":true,"lastUpdate":"2026-02-11T22:28:00.000Z","url":"https://polymarket.com/market/example1","candles":[["2025-01-01T00:00:00.000Z","0.470","0.530","0.470","0.485",15000],["2025-01-01T00:01:00.000Z","0.485","0.515","0.485","0.492",18000],["2025-01-01T00:02:00.000Z","0.492","0.508","0.492","0.495",22000],["2025-01-01T00:03:00.000Z","0.495","0.505","0.495","0.488",25000],["2025-01-01T00:04:00.000Z","0.488","0.512","0.488","0.482",30000],["2025-01-01T00:05:00.000Z","0.482","0.518","0.482","0.475",35000]]},{"id":"example2","question":"Will Fed raise rates in March meeting?","yes":"0.520","no":"0.480","spread":"0.040","volume24h":890000,"volumeNow":32000,"volumeRatio":"4.10x","priceChange":"-1.82%","signal":{"label":"📉 TENDÊNCIA BAIXA","class":"bg-orange-600","reason":"YES caindo (-1.82%)"},"isBreaking":true,"lastUpdate":"2026-02-11T22:28:00.000Z","url":"https://polymarket.com/market/example2","candles":[["2025-01-01T00:00:00.000Z","0.540","0.460","0.540","0.535",12000],["2025-01-01T00:01:00.000Z","0.535","0.465","0.535","0.528",15000],["2025-01-01T00:02:00.000Z","0.528","0.472","0.528","0.520",18000],["2025-01-01T00:03:00.000Z","0.520","0.480","0.520","0.515",25000],["2025-01-01T00:04:00.000Z","0.515","0.485","0.515","0.508",28000],["2025-01-01T00:05:00.000Z","0.508","0.492","0.508","0.495",32000]]},{"id":"example3","question":"Will Ethereum reach $5k by end of 2025?","yes":"0.320","no":"0.680","spread":"0.360","volume24h":2100000,"volumeNow":8500,"volumeRatio":"0.90x","priceChange":"+0.25%","signal":{"label":"🔥 COMPRA YES","class":"bg-green-600","reason":"YES muito baixo (0.320) - probabilidade subestimada"},"isBreaking":false,"lastUpdate":"2026-02-11T22:28:00.000Z","url":"https://polymarket.com/market/example3","candles":[["2025-01-01T00:00:00.000Z","0.315","0.685","0.315","0.318",8000],["2025-01-01T00:01:00.000Z","0.318","0.682","0.318","0.320",8500],["2025-01-01T00:02:00.000Z","0.320","0.680","0.320","0.319",8200],["2025-01-01T00:03:00.000Z","0.319","0.681","0.319","0.321",8300],["2025-01-01T00:04:00.000Z","0.321","0.679","0.321","0.320",8400],["2025-01-01T00:05:00.000Z","0.320","0.680","0.320","0.320",8500]]},{"id":"example4","question":"Will Trump win 2024 election?","yes":"0.550","no":"0.450","spread":"0.100","volume24h":3500000,"volumeNow":12000,"volumeRatio":"1.10x","priceChange":"-0.15%","signal":{"label":"⏳ AGUARDAR","class":"bg-gray-600","reason":"Sem sinal claro"},"isBreaking":false,"lastUpdate":"2026-02-11T22:28:00.000Z","url":"https://polymarket.com/market/example4","candles":[["2025-01-01T00:00:00.000Z","0.548","0.452","0.548","0.550",10000],["2025-01-01T00:01:00.000Z","0.550","0.450","0.550","0.551",11000],["2025-01-01T00:02:00.000Z","0.551","0.449","0.551","0.549",11500],["2025-01-01T00:03:00.000Z","0.549","0.451","0.549","0.550",11800],["2025-01-01T00:04:00.000Z","0.550","0.450","0.550","0.549",11900],["2025-01-01T00:05:00.000Z","0.549","0.451","0.549","0.550",12000]]},{"id":"example5","question":"Will AI exceed human intelligence by 2030?","yes":"0.180","no":"0.820","spread":"0.640","volume24h":450000,"volumeNow":5000,"volumeRatio":"0.80x","priceChange":"+0.05%","signal":{"label":"🔥 COMPRA YES","class":"bg-green-600","reason":"YES muito baixo (0.180) - probabilidade subestimada"},"isBreaking":false,"lastUpdate":"2026-02-11T22:28:00.000Z","url":"https://polymarket.com/market/example5","candles":[["2025-01-01T00:00:00.000Z","0.175","0.825","0.175","0.178",4000],["2025-01-01T00:01:00.000Z","0.178","0.822","0.178","0.179",4500],["2025-01-01T00:02:00.000Z","0.179","0.821","0.179","0.180",4800],["2025-01-01T00:03:00.000Z","0.180","0.820","0.180","0.179",4900],["2025-01-01T00:04:00.000Z","0.179","0.821","0.179","0.180",4950],["2025-01-01T00:05:00.000Z","0.180","0.820","0.180","0.180",5000]]}];
     const charts = {}; // sparkline charts storage
     
     function fmtNumber(num) {
